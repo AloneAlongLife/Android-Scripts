@@ -1,0 +1,44 @@
+:START
+
+# 檢查是否有開始行動(藍)
+IF templates/start.png
+    TAP
+    SLEEP 2
+ELSE
+    # 檢查是否需要添加理智
+    IF templates/add_senity.png
+        # 取消添加理智
+        IF templates/cancel_senity.png
+            TAP
+            SLEEP 300
+        FI
+        GOTO START
+    ELSE
+        GOTO START
+    FI
+FI
+
+# 檢查是否有開始行動(紅)
+IF templates/action.png
+    TAP
+ELSE
+    SLEEP 5
+    GOTO START
+FI
+
+:OPERATING
+# 檢查戰鬥是否已經結束
+IF templates/end.png
+    :TO_START
+
+    TAP 2000 300
+    SLEEP 5
+    IF templates/start.png
+        GOTO START
+    ELSE
+        GOTO TO_START
+    FI
+ELSE
+    SLEEP 5
+    GOTO OPERATING
+FI
