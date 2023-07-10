@@ -42,8 +42,6 @@ def scripts_interpreter(scripts: list[str], adb_session: AdbSession, log_level: 
 
             p_scripts = p_scripts[:import_index] + p_import_scripts + p_scripts[import_index + 1:]
         import_index += 1
-    
-    print("".join(map(lambda t: t[0], p_scripts)))
 
     # 尋找標籤位置
     label_dict: dict[str, int] = {
