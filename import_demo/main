@@ -1,0 +1,6 @@
+LOG File "main" Start.
+
+IMPORT module_1
+IMPORT module_2
+
+LOG File "main" EOF.

@@ -1,0 +1,15 @@
+VAR m2-i 0
+
+LOG File "module_2" Start.
+:m2-LOOP
+
+LOG m-i= %m-i m2-i= %m2-i
+
+ADD m2-i 1
+
+IF m2-i < 5
+GOTO m2-LOOP
+FI
+
+:m2-EOF
+LOG File "module_2" EOF.

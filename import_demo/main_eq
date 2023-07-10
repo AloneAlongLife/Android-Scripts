@@ -1,0 +1,38 @@
+LOG File "main" Start.
+
+# IMPORT module_1
+VAR m-i 0
+
+LOG File "module_1" Start.
+:m-LOOP
+
+LOG m-i= %m-i
+
+ADD m-i 1
+
+IF m-i < 5
+GOTO m-LOOP
+FI
+
+:m-EOF
+LOG File "module_1" EOF.
+VAR m2-i 0
+# IMPORT module_1 END
+
+# IMPORT module_2
+LOG File "module_2" Start.
+:m2-LOOP
+
+LOG m-i= %m-i m2-i= %m2-i
+
+ADD m2-i 1
+
+IF m2-i < 5
+GOTO m2-LOOP
+FI
+
+:m2-EOF
+LOG File "module_2" EOF.
+# IMPORT module_2 END
+
+LOG File "main" EOF.

@@ -1,0 +1,17 @@
+LOG For Loop Demo Start.
+
+VAR i 0
+
+:LOOP
+
+LOG i= %i
+
+ADD i
+
+IF i < 5
+GOTO LOOP
+FI
+
+:EOF
+
+LOG For Loop Demo End.

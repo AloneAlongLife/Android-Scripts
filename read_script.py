@@ -4,9 +4,17 @@ from img_det import find
 import cv2
 
 from datetime import datetime
+from logging import getLogger, INFO, StreamHandler, Formatter
 from time import sleep
+from typing import Union
 
 FUNCTION_DICT: dict[str, list[str]] = {}
+
+LOGGER = getLogger("interpreter")
+handler = StreamHandler()
+handler.setFormatter(Formatter(fmt="[%(levelname)s]%(message)s"))
+LOGGER.addHandler(handler)
+
 
 def read_script_file(filename: str) -> list[str]:
     with open(filename, encoding="utf-8") as script_file:
@@ -15,127 +23,209 @@ def read_script_file(filename: str) -> list[str]:
     return scripts
 
 
-def scripts_interpreter(scripts: list[str], adb_session: AdbSession):
-    label_dict: dict[str, int] = {
-        key.strip()[1:]: index
-        for index, key in filter(lambda tup: tup[1].strip().startswith(":"), enumerate(scripts))
-    }
+def scripts_interpreter(scripts: list[str], adb_session: AdbSession, log_level: Union[int, str] = INFO):
+    LOGGER.setLevel(log_level)
 
+    # 加上檔案位置
+    p_scripts: list[tuple[str, str]] = list(
+        map(lambda tup: (tup[1], f"main.L-{tup[0]}"), enumerate(scripts, 1)))
+
+    # 進行IMPORT
+    import_index = 0
+    while import_index < len(p_scripts):
+        stat = p_scripts[import_index][0].strip().lower()
+        if stat.startswith("import"):
+            import_path = stat.split(" ", 1)[1].strip()
+            import_scripts = read_script_file(import_path)
+            p_import_scripts: list[tuple[str, str]] = list(map(lambda tup: (
+                tup[1], f"{import_path}.L-{tup[0]}"), enumerate(import_scripts, 1)))
+
+            p_scripts = p_scripts[:import_index] + p_import_scripts + p_scripts[import_index + 1:]
+        import_index += 1
     
+    print("".join(map(lambda t: t[0], p_scripts)))
+
+    # 尋找標籤位置
+    label_dict: dict[str, int] = {
+        key[0].strip()[1:]: index
+        for index, key in filter(lambda tup: tup[1][0].strip().startswith(":"), enumerate(p_scripts))
+    }
+    # 變數
+    var_dict: dict[str, int] = {}
+
     point = 0
     last_pos = (0, 0)
 
-    while point < len(scripts):
-        script = scripts[point].strip().split()
+    while point < len(p_scripts):
+        script = p_scripts[point][0].strip().split()
+        # 下一行
+        point += 1
 
+        # 空行
+        # input(script)
         if len(script) == 0:
-            point += 1
             continue
-        print(f"{datetime.now().isoformat()} L-{point + 1} > {scripts[point].strip()}")
+        time = datetime.now().isoformat()
+        LOGGER.debug(f"{time} {p_scripts[point - 1][1]} > {p_scripts[point - 1][0].strip()}")
 
-        # 註解
-        if script[0].startswith("#"):
-            point += 1
-            continue
-
-        if script[0].startswith(":"):
-            point += 1
+        # 註解、標籤
+        if script[0].startswith(("#", ":")):
             continue
 
+        # IF 結束標記
         if script[0].lower() == "fi":
-            point += 1
             continue
 
+        # ELSE 直接跳至 FI
         if script[0].lower() == "else":
             if_num = 0
             while True:
+                temp_script = p_scripts[point][0].strip().split()
                 point += 1
-                temp_script = scripts[point].strip().split()
-                
+
+                # 空行
                 if len(temp_script) == 0:
                     continue
 
+                # 檢查是否進入巢狀結構
                 if temp_script[0].lower() == "if":
                     if_num += 1
-                    continue
-
-                if temp_script[0].lower() == "fi" and if_num > 0:
+                elif temp_script[0].lower() == "fi" and if_num > 0:
                     if_num -= 1
                     continue
 
-                if temp_script[0].lower() == "fi":
+                # 檢查是否已經離開巢狀結構
+                if if_num > 0:
+                    continue
+                elif temp_script[0].lower() == "fi":
                     break
             continue
 
         # 輸出
-        if script[0].lower() == "log":
-            print(" ".join(script[1:]))
-            point += 1
+        if script[0].lower() in ("log", "debug", "info", "warn", "error", "fatal"):
+            level = script[0].lower()
+            string = " ".join(
+                map(lambda s: str(var_dict[s[1:]]) if s.startswith("%") else s, script[1:]))
+            if level == "debug":
+                LOGGER.debug(string)
+            elif level == "log" or level == "info":
+                LOGGER.info(string)
+            elif level == "warn":
+                LOGGER.warning(string)
+            elif level == "error":
+                LOGGER.error(string)
+            elif level == "fatal":
+                LOGGER.critical(string)
             continue
-        
+
         # GOTO
         if script[0].lower() == "goto":
-            label = script[1]
-            point = label_dict[label]
+            point = label_dict[script[1]]
+            continue
+
+        # 宣告變數
+        if script[0].lower() == "var":
+            var_name = script[1]
+            if len(script) < 3:
+                val = 0
+            else:
+                val = script[2]
+                val = int(val) if val.isdigit() else var_dict[val]
+            var_dict[var_name] = val
+            continue
+
+        # 加、減、乘
+        if script[0].lower() in ("add", "reduce", "multi"):
+            oper = script[0].lower()
+
+            var_name = script[1]
+            origin_val = var_dict[var_name]
+            if len(script) < 3:
+                val = 1
+            else:
+                val = script[2]
+                val = int(val) if val.isdigit() else var_dict[val]
+
+            if oper == "add":
+                origin_val += val
+            elif oper == "reduce":
+                origin_val -= val
+            else:
+                origin_val *= val
+
+            var_dict[var_name] = origin_val
             continue
 
         # IF +1 ELSE +2
         if script[0].lower() == "if":
-            template_path = script[1]
+            if len(script) > 3:
+                # 數字比較
+                val_1 = script[1]
+                val_2 = script[3]
 
-            try:
-                if script[2].lower() == "debug":
-                    debug = True
-                else:
-                    debug = False
-            except:
-                debug = False
-            
-            template = cv2.imread(template_path)
-            screen_shot = adb_session.screen_shot()
-            res, pos = find(template, screen_shot, debug=debug)
+                val_1 = int(val_1) if val_1.isdigit() else var_dict[val_1]
+                val_2 = int(val_2) if val_2.isdigit() else var_dict[val_2]
 
-            if res:
-                last_pos = pos
-                point += 1
+                if script[2] == ">":
+                    ans = val_1 > val_2
+                elif script[2] == ">=":
+                    ans = val_1 >= val_2
+                elif script[2] == "<":
+                    ans = val_1 < val_2
+                elif script[2] == "<=":
+                    ans = val_1 <= val_2
+                elif script[2] == "=":
+                    ans = val_1 == val_2
+                elif script[2] == "!=":
+                    ans = val_1 != val_2
             else:
+                # 辨識圖片
+                template_path = script[1]
+                debug = script[2].lower() == "debug" if len(
+                    script) > 2 else False
+
+                ans, pos = find(
+                    cv2.imread(template_path),
+                    adb_session.screen_shot(),
+                    debug=debug
+                )
+                last_pos = pos if ans else last_pos
+
+            # 尋找 ELSE/FI
+            if not ans:
                 if_num = 0
                 while True:
+                    temp_script = p_scripts[point][0].strip().split()
                     point += 1
-                    temp_script = scripts[point].strip().split()
-                    
+
+                    # 空行
                     if len(temp_script) == 0:
                         continue
 
+                    # 檢查是否進入巢狀結構
                     if temp_script[0].lower() == "if":
                         if_num += 1
-                        continue
-
-                    if temp_script[0].lower() == "fi" and if_num > 0:
+                    elif temp_script[0].lower() == "fi" and if_num > 0:
                         if_num -= 1
                         continue
-                    
-                    if temp_script[0].lower() == "else" or temp_script[0].lower() == "fi":
-                        if if_num > 0:
-                            continue
-                        point += 1
+
+                    # 檢查是否已經離開巢狀結構
+                    if if_num > 0:
+                        continue
+                    elif temp_script[0].lower() == "else" or temp_script[0].lower() == "fi":
                         break
             continue
 
         # 點擊
         if script[0].lower() == "tap":
-            if len(script) == 3:
-                x = script[1]
-                y = script[2]
-                adb_session.tap(x, y)
+            if len(script) > 2:
+                x, y = script[1], script[2]
             else:
-                adb_session.tap(*map(str, last_pos))
-            point += 1
+                x, y = map(str, last_pos)
+            adb_session.tap(x, y)
             continue
 
         # 等待秒數
         if script[0].lower() == "sleep":
-            seconds = float(script[1])
-            sleep(seconds)
-            point += 1
+            sleep(float(script[1]))
             continue

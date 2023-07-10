@@ -12,10 +12,8 @@ ELSE
             TAP
             SLEEP 300
         FI
-        GOTO START
-    ELSE
-        GOTO START
     FI
+    GOTO START
 FI
 
 # 檢查是否有開始行動(紅)
@@ -26,14 +24,19 @@ ELSE
     GOTO START
 FI
 
+LOG 開始行動
+
 :OPERATING
 # 檢查戰鬥是否已經結束
 IF templates/end.png
+    LOG 行動結束
+
     :TO_START
 
     TAP 2000 300
     SLEEP 5
     IF templates/start.png
+        # 結束一輪
         GOTO START
     ELSE
         GOTO TO_START
@@ -42,3 +45,6 @@ ELSE
     SLEEP 5
     GOTO OPERATING
 FI
+
+:EOF
+LOG End.
