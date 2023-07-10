@@ -106,7 +106,9 @@ def scripts_interpreter(scripts: list[str], adb_session: AdbSession, log_level: 
                 map(lambda s: str(var_dict[s[1:]]) if s.startswith("%") else s, script[1:]))
             if level == "debug":
                 LOGGER.debug(string)
-            elif level == "log" or level == "info":
+            elif level == "log":
+                print(string)
+            elif level == "info":
                 LOGGER.info(string)
             elif level == "warn":
                 LOGGER.warning(string)
@@ -130,6 +132,12 @@ def scripts_interpreter(scripts: list[str], adb_session: AdbSession, log_level: 
                 val = script[2]
                 val = int(val) if val.isdigit() else var_dict[val]
             var_dict[var_name] = val
+            continue
+
+        # 輸入
+        if script[0].lower() == "inp":
+            var_name = script[1]
+            var_dict[var_name] = int(input())
             continue
 
         # 加、減、乘
