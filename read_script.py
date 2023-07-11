@@ -1,5 +1,4 @@
 from adb import AdbSession
-from img_det import find
 
 import cv2
 
@@ -164,38 +163,25 @@ def scripts_interpreter(scripts: list[str], adb_session: AdbSession, log_level: 
 
         # IF +1 ELSE +2
         if script[0].lower() == "if":
-            if len(script) > 3:
-                # 數字比較
-                val_1 = script[1]
-                val_2 = script[3]
+            # 數字比較
+            val_1 = script[1]
+            val_2 = script[3]
 
-                val_1 = int(val_1) if val_1.isdigit() else var_dict[val_1]
-                val_2 = int(val_2) if val_2.isdigit() else var_dict[val_2]
+            val_1 = int(val_1) if val_1.isdigit() else var_dict[val_1]
+            val_2 = int(val_2) if val_2.isdigit() else var_dict[val_2]
 
-                if script[2] == ">":
-                    ans = val_1 > val_2
-                elif script[2] == ">=":
-                    ans = val_1 >= val_2
-                elif script[2] == "<":
-                    ans = val_1 < val_2
-                elif script[2] == "<=":
-                    ans = val_1 <= val_2
-                elif script[2] == "=":
-                    ans = val_1 == val_2
-                elif script[2] == "!=":
-                    ans = val_1 != val_2
-            else:
-                # 辨識圖片
-                template_path = script[1]
-                debug = script[2].lower() == "debug" if len(
-                    script) > 2 else False
-
-                ans, pos = find(
-                    cv2.imread(template_path),
-                    adb_session.screen_shot(),
-                    debug=debug
-                )
-                last_pos = pos if ans else last_pos
+            if script[2] == ">":
+                ans = val_1 > val_2
+            elif script[2] == ">=":
+                ans = val_1 >= val_2
+            elif script[2] == "<":
+                ans = val_1 < val_2
+            elif script[2] == "<=":
+                ans = val_1 <= val_2
+            elif script[2] == "=":
+                ans = val_1 == val_2
+            elif script[2] == "!=":
+                ans = val_1 != val_2
 
             # 尋找 ELSE/FI
             if not ans:
