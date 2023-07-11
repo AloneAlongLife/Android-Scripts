@@ -9,6 +9,7 @@ ELSE
     IF templates/add_senity.png
         # 取消添加理智
         IF templates/cancel_senity.png
+            INFO 缺乏理智
             TAP
             SLEEP 300
         FI
@@ -24,12 +25,12 @@ ELSE
     GOTO START
 FI
 
-LOG 開始行動
+INFO 開始行動
 
 :OPERATING
 # 檢查戰鬥是否已經結束
 IF templates/end.png
-    LOG 行動結束
+    INFO 行動結束
 
     :TO_START
 

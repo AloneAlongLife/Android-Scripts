@@ -1,0 +1,5 @@
+VAR i
+LOG Input:
+INP i
+
+LOG You input %i
