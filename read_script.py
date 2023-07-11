@@ -1,7 +1,5 @@
 from adb import AdbSession
 
-import cv2
-
 from datetime import datetime
 from logging import getLogger, INFO, StreamHandler, Formatter
 from time import sleep

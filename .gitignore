@@ -161,3 +161,4 @@ cython_debug/
 
 test.py
 main.exe
+main-lite.exe
